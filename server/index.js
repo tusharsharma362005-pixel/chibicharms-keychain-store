@@ -1,6 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { db, initDatabase } from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '..', 'dist');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -371,6 +378,25 @@ app.get('/api/stats', (req, res) => {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 });
+
+// --- 6. STATIC FILES & SPA FALLBACK FOR PRODUCTION ---
+if (fs.existsSync(distPath)) {
+  console.log(`📦 Serving static frontend files from: ${distPath}`);
+  app.use(express.static(distPath));
+
+  // SPA fallback for all non-API GET routes
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API route not found' });
+    }
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+}
 
 // Start Express Server
 app.listen(PORT, () => {
