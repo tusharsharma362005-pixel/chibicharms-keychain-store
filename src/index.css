@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FFFDF9;
+    color: #3F3034;
+    font-family: 'Quicksand', sans-serif;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-heading {
+    font-family: 'Fredoka', 'Quicksand', sans-serif;
+  }
+}
+
+/* Custom cute scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF1F6;
+}
+::-webkit-scrollbar-thumb {
+  background: #FDBDC8;
+  border-radius: 999px;
+  border: 2px solid #FFF1F6;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FA92B0;
+}
+
+/* Sparkle & pastel accents */
+.bg-pastel-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(254, 205, 223, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(254, 205, 223, 0.25) 1px, transparent 1px);
+}
+
+.bg-polka-dots {
+  background-image: radial-gradient(rgba(244, 63, 123, 0.12) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+}
+
+.shimmer-badge {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Glassmorphism for cute cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.acrylic-gloss {
+  position: relative;
+  overflow: hidden;
+}
+.acrylic-gloss::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.02) 100%);
+  border-radius: inherit;
+  pointer-events: none;
+}
