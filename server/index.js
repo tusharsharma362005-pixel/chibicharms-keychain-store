@@ -384,8 +384,8 @@ if (fs.existsSync(distPath)) {
   console.log(`📦 Serving static frontend files from: ${distPath}`);
   app.use(express.static(distPath));
 
-  // SPA fallback for all non-API GET routes
-  app.get('*', (req, res, next) => {
+  // SPA fallback for all non-API GET routes (Express 5 compatible)
+  app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API route not found' });
     }
