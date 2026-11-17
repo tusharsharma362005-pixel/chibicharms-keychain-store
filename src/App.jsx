@@ -9,11 +9,13 @@ import NewArrivalsPage from './pages/NewArrivalsPage';
 import AboutUsPage from './pages/AboutUsPage';
 import CartPage from './pages/CartPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
+import AuthPage from './pages/AuthPage';
 import CheckoutModal from './components/CheckoutModal';
 import SearchModal from './components/SearchModal';
-import { Sparkles, ShoppingBag, Check } from 'lucide-react';
+import { AuthProvider } from './context/AuthContext';
+import { Check } from 'lucide-react';
 
-export default function App() {
+function AppContent() {
   // Routing State
   const [currentPage, setCurrentPage] = useState('home');
   const [routeParams, setRouteParams] = useState({});
@@ -69,6 +71,10 @@ export default function App() {
         setCurrentPage('cart');
       } else if (parts[0] === 'admin') {
         setCurrentPage('admin');
+      } else if (parts[0] === 'login') {
+        setCurrentPage('login');
+      } else if (parts[0] === 'signup') {
+        setCurrentPage('signup');
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -95,6 +101,8 @@ export default function App() {
     else if (page === 'about') targetHash = '#/about';
     else if (page === 'cart') targetHash = '#/cart';
     else if (page === 'admin') targetHash = '#/admin';
+    else if (page === 'login') targetHash = '#/login';
+    else if (page === 'signup') targetHash = '#/signup';
 
     window.location.hash = targetHash;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -163,6 +171,7 @@ export default function App() {
         navigate={navigate}
         cartCount={cartCount}
         openSearchModal={() => setIsSearchOpen(true)}
+        showToast={showToast}
       />
 
       {/* Main Page Views */}
@@ -213,6 +222,14 @@ export default function App() {
         {currentPage === 'admin' && (
           <AdminOrdersPage navigate={navigate} />
         )}
+
+        {(currentPage === 'login' || currentPage === 'signup') && (
+          <AuthPage
+            navigate={navigate}
+            initialMode={currentPage === 'signup' ? 'signup' : 'login'}
+            showToast={showToast}
+          />
+        )}
       </main>
 
       {/* Footer */}
@@ -252,5 +269,13 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

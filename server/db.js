@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -7,6 +8,27 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, '..', 'chibicharms.db');
 
 export const db = new DatabaseSync(dbPath);
+
+// --- Password Hashing & Verification Utilities ---
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+export function verifyPassword(password, stored) {
+  try {
+    if (!stored || !stored.includes(':')) return false;
+    const [salt, key] = stored.split(':');
+    if (!salt || !key) return false;
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey);
+  } catch (err) {
+    console.error('Password verification error:', err);
+    return false;
+  }
+}
 
 // Initialize Tables
 export function initDatabase() {
@@ -79,11 +101,26 @@ export function initDatabase() {
     );
   `);
 
+  // 4. Users Table for Authentication
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      avatar TEXT DEFAULT 'boba-bear',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Seed Products if empty
   seedProducts();
 
   // Seed Sample Orders if empty
   seedSampleOrders();
+
+  // Seed Users if empty
+  seedUsers();
 }
 
 function seedProducts() {
@@ -610,4 +647,60 @@ function seedSampleOrders() {
   }
 
   console.log(`✅ Seeded ${sampleOrders.length} initial orders.`);
+}
+
+function seedUsers() {
+  const countRow = db.prepare('SELECT COUNT(*) as count FROM users').get();
+  if (countRow.count > 0) return;
+
+  console.log('🌱 Seeding initial demo users to SQLite database...');
+
+  const demoUsers = [
+    {
+      id: 'usr_demo_chibi',
+      name: 'Chibi Collector 🌸',
+      email: 'chibi@example.com',
+      password: 'cute1234',
+      avatar: 'boba-bear'
+    },
+    {
+      id: 'usr_demo_sakura',
+      name: 'Sakura Charm 💖',
+      email: 'sakura@example.com',
+      password: 'sparkle123',
+      avatar: 'sakura-bunny'
+    }
+  ];
+
+  const insertUser = db.prepare(`
+    INSERT INTO users (id, name, email, password_hash, avatar)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  for (const u of demoUsers) {
+    const passwordHash = hashPassword(u.password);
+    insertUser.run(u.id, u.name, u.email.toLowerCase(), passwordHash, u.avatar);
+  }
+
+  console.log(`✅ Seeded ${demoUsers.length} initial demo users.`);
+}
+
+// User Data Access Helpers
+export function findUserByEmail(email) {
+  if (!email) return null;
+  return db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(email.trim());
+}
+
+export function findUserById(id) {
+  if (!id) return null;
+  return db.prepare('SELECT id, name, email, avatar, created_at FROM users WHERE id = ?').get(id);
+}
+
+export function createUser({ id, name, email, passwordHash, avatar = 'boba-bear' }) {
+  const stmt = db.prepare(`
+    INSERT INTO users (id, name, email, password_hash, avatar)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  stmt.run(id, name.trim(), email.toLowerCase().trim(), passwordHash, avatar);
+  return findUserById(id);
 }

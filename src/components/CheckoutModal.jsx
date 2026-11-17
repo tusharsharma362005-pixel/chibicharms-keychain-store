@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, ShieldCheck, Lock, CreditCard, Sparkles, ArrowRight, Truck, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { placeOrder } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function CheckoutModal({
   isOpen,
@@ -10,6 +11,7 @@ export default function CheckoutModal({
   clearCart,
   navigate
 }) {
+  const { user } = useAuth();
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Success
   const [formData, setFormData] = useState({
     name: 'Emily Watson',
@@ -23,6 +25,17 @@ export default function CheckoutModal({
     cardCvc: '888',
     paymentMethod: 'card'
   });
+
+  // Prefill user details if logged in
+  useEffect(() => {
+    if (user && isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email
+      }));
+    }
+  }, [user, isOpen]);
   const [orderNumber, setOrderNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');

@@ -100,3 +100,105 @@ export async function fetchDashboardStats() {
   if (!res.ok) throw new Error('Failed to fetch stats');
   return res.json();
 }
+
+/**
+ * Register a new user in SQLite backend
+ */
+export async function registerUser({ name, email, password, avatar }) {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, avatar }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to create account');
+  }
+  return data;
+}
+
+/**
+ * Login user via SQLite backend
+ */
+export async function loginUser({ email, password }) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to log in');
+  }
+  return data;
+}
+
+/**
+ * Fetch currently logged in user profile
+ */
+export async function fetchCurrentUser(userId, token) {
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+  const res = await fetch(`${API_BASE}/auth/me${query}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch user session');
+  return res.json();
+}
+
+/**
+ * Log out user
+ */
+export async function logoutUser() {
+  const res = await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.json().catch(() => ({ success: true }));
+}
+
+/**
+ * Local storage authentication helpers
+ */
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem('chibicharms_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setStoredUser(user) {
+  try {
+    if (user) {
+      localStorage.setItem('chibicharms_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('chibicharms_user');
+    }
+  } catch (e) {}
+}
+
+export function getStoredToken() {
+  try {
+    return localStorage.getItem('chibicharms_token') || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setStoredToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem('chibicharms_token', token);
+    } else {
+      localStorage.removeItem('chibicharms_token');
+    }
+  } catch (e) {}
+}
+
+export function clearStoredAuth() {
+  try {
+    localStorage.removeItem('chibicharms_user');
+    localStorage.removeItem('chibicharms_token');
+  } catch (e) {}
+}

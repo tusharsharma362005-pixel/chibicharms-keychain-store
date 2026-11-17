@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { db, initDatabase } from './db.js';
+import { db, initDatabase, findUserByEmail, findUserById, createUser, hashPassword, verifyPassword } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,147 @@ initDatabase();
 // --- 1. HEALTH CHECK ---
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', brand: 'ChibiCharms API', timestamp: new Date().toISOString() });
+});
+
+// --- 1.5 AUTHENTICATION API (LOGIN & SIGNUP) ---
+// Register new user account
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { name, email, password, avatar = 'boba-bear' } = req.body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'Please enter your lovely name! 🎀' });
+    }
+    if (!email || typeof email !== 'string' || !email.trim() || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please enter a valid email address! 💌' });
+    }
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long for security! 🔒' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUser = findUserByEmail(cleanEmail);
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists! Please log in instead. 💕' });
+    }
+
+    const userId = `usr_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const passwordHash = hashPassword(password);
+    const newUser = createUser({
+      id: userId,
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      avatar: avatar || 'boba-bear'
+    });
+
+    const token = `cbct_${userId}_${crypto.randomBytes(16).toString('hex')}`;
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully! Welcome to ChibiCharms! 🌸✨',
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        avatar: newUser.avatar,
+        createdAt: newUser.created_at
+      },
+      token
+    });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Failed to create account. Please try again later.' });
+  }
+});
+
+// Login existing user
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ error: 'Please enter your email address! 💌' });
+    }
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Please enter your password! 🔑' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = findUserByEmail(cleanEmail);
+    if (!user) {
+      return res.status(401).json({ error: 'No account found with this email. Would you like to create one? 🌸' });
+    }
+
+    const isMatch = verifyPassword(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again! 🎀' });
+    }
+
+    const token = `cbct_${user.id}_${crypto.randomBytes(16).toString('hex')}`;
+
+    res.json({
+      success: true,
+      message: `Welcome back, ${user.name}! ✨`,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        createdAt: user.created_at
+      },
+      token
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Failed to log in. Please try again later.' });
+  }
+});
+
+// Get current user profile
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const queryUserId = req.query.userId;
+    let userId = queryUserId;
+
+    if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      // Token format: cbct_<userId>_<randomHex>
+      const match = token.match(/^cbct_(usr_[^_]+_[^_]+)_/);
+      if (match) {
+        userId = match[1];
+      }
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const user = findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User profile not found' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        createdAt: user.created_at
+      }
+    });
+  } catch (err) {
+    console.error('Profile fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true, message: 'Logged out successfully. Have a magical day! ✨' });
 });
 
 // --- 2. PRODUCTS API ---
